@@ -1,0 +1,31 @@
+{
+  "name": "privylens",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@8.15.4",
+  "scripts": {
+    "dev": "concurrently -k -n server,web -c cyan,magenta \"pnpm -C apps/server dev\" \"pnpm -C apps/web dev\"",
+    "dev:server": "pnpm -C apps/server dev",
+    "dev:web": "pnpm -C apps/web dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.11",
+    "@eslint/js": "^9.8.0",
+    "@typescript-eslint/eslint-plugin": "^8.5.0",
+    "@typescript-eslint/parser": "^8.5.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^9.8.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  }
+}
+
