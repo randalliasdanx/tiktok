@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import React from 'react';
 import { redactText } from '@/lib/api';
 
@@ -6,7 +6,11 @@ export function ChatComposer({
   onRedacted,
   policy,
 }: {
-  onRedacted: (masked: string, spans: Array<{ start: number; end: number; label: string }>, original: string) => void;
+  onRedacted: (
+    masked: string,
+    spans: Array<{ start: number; end: number; label: string }>,
+    original: string,
+  ) => void;
   policy: Record<string, boolean>;
 }) {
   const [text, setText] = React.useState('');
@@ -47,4 +51,3 @@ export function ChatComposer({
     </div>
   );
 }
-

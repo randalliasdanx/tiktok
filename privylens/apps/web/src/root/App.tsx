@@ -3,6 +3,7 @@ import { PolicyPopover } from '@/components/PolicyPopover';
 import { ChatComposer } from '@/components/ChatComposer';
 import { ChatStream, Message } from '@/components/ChatStream';
 import { ImageDropzone } from '@/components/ImageDropzone';
+import FaceRedactor from '@/components/FaceRedactor';
 
 export function App() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -55,8 +56,12 @@ export function App() {
       </nav>
 
       <main className="flex-1 max-w-6xl mx-auto w-full px-4 grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-        <div className="flex flex-col min-h-0">
+        <div className="flex flex-col min-h-0 space-y-4">
           <ChatStream messages={messages} />
+          <section className="rounded-lg border p-3">
+            <h2 className="font-semibold mb-2">Face Redaction (Client-side)</h2>
+            <FaceRedactor />
+          </section>
         </div>
         <div className="min-h-0">
           <ImageDropzone onUploaded={handleImageUploaded} policy={policy} />
