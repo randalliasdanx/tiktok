@@ -3,6 +3,7 @@ import { PolicyPopover } from '@/components/PolicyPopover';
 import { ChatComposer } from '@/components/ChatComposer';
 import { ChatStream, Message } from '@/components/ChatStream';
 import { ImageDropzone } from '@/components/ImageDropzone';
+import FaceRedactor from '@/components/FaceRedactor';
 
 export function App() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -46,26 +47,98 @@ export function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen">
-      <nav className="border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="font-semibold">PrivyLens</div>
-          <PolicyPopover policy={policy} onChange={onPolicyChange} />
+    <div className="flex h-screen bg-[#212121] text-gray-100">
+      {/* Sidebar - ChatGPT style */}
+      <div className="w-64 bg-[#171717] border-r border-gray-600 flex flex-col">
+        <div className="p-4 border-b border-gray-600">
+          <h1 className="text-xl font-semibold text-white">PrivyLens</h1>
+          <p className="text-sm text-gray-400 mt-1">Privacy-first redaction</p>
         </div>
-      </nav>
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-        <div className="flex flex-col min-h-0">
-          <ChatStream messages={messages} />
-        </div>
-        <div className="min-h-0">
-          <ImageDropzone onUploaded={handleImageUploaded} policy={policy} />
-        </div>
-      </main>
+        <div className="flex-1 p-4">
+          <div className="space-y-4">
+            <section className="bg-[#2f2f2f] rounded-lg p-4 border border-gray-600">
+              <h3 className="font-medium text-white mb-3">Privacy Settings</h3>
+              <PolicyPopover policy={policy} onChange={onPolicyChange} />
+            </section>
 
-      <div className="sticky bottom-0 w-full bg-white/80 backdrop-blur border-t">
-        <div className="max-w-6xl mx-auto px-4 py-3">
-          <ChatComposer onRedacted={handleRedactedText} policy={policy} />
+            <div className="text-xs text-gray-500 p-3">
+              <p>✓ Client-side processing</p>
+              <p>✓ No data sent to servers</p>
+              <p>✓ Real-time redaction</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main content area - Full ChatGPT style */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <div className="border-b border-gray-600 bg-[#2f2f2f] p-4">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-lg font-semibold text-white">Face & Privacy Redaction</h2>
+            <p className="text-sm text-gray-400">
+              Automatically blur faces and redact sensitive information
+            </p>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-hidden">
+          <div className="h-full max-w-4xl mx-auto px-6 py-6">
+            {/* Three-column layout - Face redaction now main focus */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-full">
+              {/* Main Face Redaction section - takes up 2 columns */}
+              <div className="xl:col-span-2 flex flex-col bg-[#2f2f2f] rounded-lg border border-gray-600 overflow-hidden">
+                <div className="p-4 border-b border-gray-600 bg-[#2a2a2a]">
+                  <h3 className="font-semibold text-white">Face Redaction Studio</h3>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Upload images to automatically detect and blur faces with precision
+                  </p>
+                </div>
+                <div className="flex-1 p-6">
+                  <FaceRedactor onImageReady={handleImageUploaded} />
+                </div>
+              </div>
+
+              {/* Right panel - Text tools */}
+              <div className="flex flex-col space-y-6">
+                {/* Text Redaction Chat */}
+                <div className="bg-[#2f2f2f] rounded-lg border border-gray-600 overflow-hidden flex-1">
+                  <div className="p-4 border-b border-gray-600 bg-[#2a2a2a]">
+                    <h3 className="font-semibold text-white">Text Redaction</h3>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Type sensitive info - auto-redacted
+                    </p>
+                  </div>
+                  <div className="flex-1 overflow-hidden h-64">
+                    <ChatStream messages={messages} />
+                  </div>
+                </div>
+
+                {/* Image Upload for Chat */}
+                <div className="bg-[#2f2f2f] rounded-lg border border-gray-600 overflow-hidden">
+                  <div className="p-4 border-b border-gray-600 bg-[#2a2a2a]">
+                    <h3 className="font-semibold text-white">Add to Chat</h3>
+                    <p className="text-xs text-gray-400 mt-1">Upload images for chat</p>
+                  </div>
+                  <div className="p-4">
+                    <ImageDropzone onUploaded={handleImageUploaded} policy={policy} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Input area - ChatGPT style */}
+        <div className="border-t border-gray-600 bg-[#2f2f2f] p-4">
+          <div className="max-w-4xl mx-auto">
+            <ChatComposer
+              onRedacted={handleRedactedText}
+              onImageAttached={handleImageUploaded}
+              policy={policy}
+            />
+          </div>
         </div>
       </div>
     </div>

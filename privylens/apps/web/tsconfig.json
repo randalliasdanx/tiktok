@@ -2,13 +2,13 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "jsx": "react-jsx",
+    "baseUrl": ".",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": false,
+    "noEmit": true,
     "paths": {
-      "@/lib/*": [
-        "src/lib/*"
-      ],
-      "@/components/*": [
-        "src/components/*"
-      ]
+      "@/*": ["src/*"]
     }
   },
   "include": [
