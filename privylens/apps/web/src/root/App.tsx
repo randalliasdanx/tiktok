@@ -144,56 +144,60 @@ export function App() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Sidebar - ChatGPT style */}
-      <div className="w-64 bg-gray-900 flex flex-col">
-        <div className="p-4 border-b border-gray-700">
+  <div className="min-h-screen bg-[#0f1115] text-gray-100">
+    <div className="mx-auto flex h-screen">
+      {/* Sidebar */}
+      <aside className="w-72 bg-[#111417] border-r border-[#2b2f36] flex flex-col">
+        <div className="p-5 border-b border-[#2b2f36]">
           <h1 className="text-xl font-semibold text-white">PrivyLens</h1>
-          <p className="text-sm text-gray-400 mt-1">Privacy-first AI chat</p>
+          <p className="text-sm text-gray-400 mt-1">Privacy-first redaction</p>
         </div>
 
         <div className="flex-1 p-4">
           <div className="space-y-4">
-            <section className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+            <section className="bg-[#151a20] rounded-2xl p-4 border border-[#2b2f36]">
               <h3 className="font-medium text-white mb-3">Privacy Settings</h3>
               <PolicyPopover policy={policy} onChange={onPolicyChange} />
             </section>
 
-            <div className="text-xs text-gray-500 p-3">
+            <div className="text-xs text-gray-500 p-3 leading-5">
               <p>✓ Client-side processing</p>
-              <p>✓ Auto redaction</p>
-              <p>✓ Image privacy</p>
+              <p>✓ No data sent to servers</p>
+              <p>✓ Real-time redaction</p>
             </div>
-            {/* Create History Tab, that loads the History.tsx page */}
+
             <button
-              className="w-full text-left px-3 py-2 rounded hover:bg-[#2a2a2a] transition"
+              className="inline-flex items-center ml-3 gap-2 self-start
+                        rounded-lg bg-[#404040] border border-[#2b2f36]
+                        text-gray-100 px-3 py-2 text-sm
+                        hover:bg-[#4a4a4a] transition-colors"
               onClick={() => navigate('/history')}
             >
-              My History
+              My Image History
             </button>
           </div>
         </div>
-      </div>
+      </aside>
 
-      {/* Main Chat Area - ChatGPT style */}
-      <div className="flex-1 flex flex-col bg-white dark:bg-gray-800">
+      {/* Main */}
+      <main className="flex-1 flex flex-col">
         {/* Header */}
-        <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-          <div className="max-w-3xl mx-auto">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">PrivyLens Chat</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Your messages and images are automatically redacted for privacy
+        <header className="sticky top-0 z-10 border-b border-[#2b2f36] bg-[#0f1115]/80 backdrop-blur">
+          <div className="max-w-6xl mx-auto px-6 py-4">
+            <h2 className="text-lg font-semibold text-white">Face &amp; Privacy Redaction</h2>
+            <p className="text-sm text-gray-400">
+              Automatically blur faces and redact sensitive information
             </p>
           </div>
-        </div>
+        </header>
 
-        <div className="flex-1 overflow-hidden">
+        {/* Content */}
+        <section className="flex-1 overflow-hidden">
           <div className="h-full max-w-6xl mx-auto px-6 py-6">
-            {/* Three-column layout - Face redaction now main focus */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 h-full">
-              {/* Main Face Redaction section - takes up 2 columns */}
-              <div className="xl:col-span-7 flex flex-col bg-[#2f2f2f] rounded-lg border border-gray-600 overflow-hidden">
-                <div className="p-4 border-b border-gray-600 bg-[#2a2a2a]">
+              {/* Face Redaction */}
+              <section className="xl:col-span-7 flex flex-col rounded-2xl bg-[#151a20] border border-[#2b2f36] overflow-hidden">
+                <div className="p-4 border-b border-[#2b2f36] bg-[#131820]">
                   <h3 className="font-semibold text-white">Face Redaction Studio</h3>
                   <p className="text-xs text-gray-400 mt-1">
                     Upload images to automatically detect and blur faces with precision
@@ -202,41 +206,40 @@ export function App() {
                 <div className="flex-1 p-6">
                   <FaceRedactor onImageReady={handleImageUploaded} />
                 </div>
-              </div>
+              </section>
 
-              {/* Right panel - Text tools */}
-              <div className="xl:col-span-5 flex flex-col space-y-6">
-                {/* Text Redaction Chat */}
-                <div className="bg-[#2f2f2f] rounded-lg border border-gray-600 flex-1 flex flex-col min-h-0">
-                  <div className="p-4 border-b border-gray-600 bg-[#2a2a2a]">
-                    <h3 className="font-semibold text-white">Text Redaction</h3>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Type sensitive info - auto-redacted
-                    </p>
+              {/* Text Redaction */}
+              <section className="xl:col-span-5 flex flex-col space-y-6">
+                <div className="rounded-2xl bg-[#151a20] border border-[#2b2f36] flex-1 flex flex-col min-h-0">
+                  <div className="p-4 border-b border-[#2b2f36] bg-[#131820] flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-white">Text Redaction</h3>
+                      <p className="text-xs text-gray-400 mt-1">Type sensitive info – auto-redacted</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="px-3 py-1.5 rounded-md text-xs font-medium bg-[#10a37f] hover:bg-[#0d8a6b] text-white"
+                      onClick={() => (window as any).exportMasked?.()}
+                      title="Export .txt"
+                    >
+                      Export .txt
+                    </button>
                   </div>
-                  <div className="flex h-screen bg-[#212121] max-h-[70vh] text-gray-100 overflow-y-auto ">
-                    <ChatStream messages={messages} />
+
+                  <div className="flex-1 overflow-y-auto">
+                    <div className="px-4 py-3">
+                      <ChatStream messages={messages} />
+                    </div>
                   </div>
                 </div>
-
-                {/* Image Upload for Chat */}
-                {/*<div className="bg-[#2f2f2f] rounded-lg border border-gray-600 overflow-hidden">
-                  <div className="p-4 border-b border-gray-600 bg-[#2a2a2a]">
-                    <h3 className="font-semibold text-white">Add to Chat</h3>
-                    <p className="text-xs text-gray-400 mt-1">Upload images for chat</p>
-                  </div>
-                  <div className="p-4">
-                    <ImageDropzone onUploaded={handleImageUploaded} policy={policy} />
-                  </div>
-                </div>*/}
-              </div>
+              </section>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Input Area - ChatGPT style */}
-        <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-          <div className="max-w-3xl mx-auto">
+        {/* Composer */}
+        <footer className="border-t border-[#2b2f36] bg-[#111417]">
+          <div className="max-w-3xl mx-auto px-4 py-4">
             <ChatComposer
               onRedacted={(masked, spans, original) => {
                 void handleRedactedText(masked, spans, original);
@@ -247,8 +250,9 @@ export function App() {
               policy={policy}
             />
           </div>
-        </div>
-      </div>
+        </footer>
+      </main>
     </div>
-  );
+  </div>
+);
 }
