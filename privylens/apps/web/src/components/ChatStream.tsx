@@ -1,12 +1,20 @@
 'use client';
 import React from 'react';
 import { ImagePreviewDialog } from './ImagePreviewDialog';
+import { RedactedText } from './RedactedText';
 
 export type Message =
-  | { id: string; role: 'user' | 'system'; type: 'text'; masked: string; original?: string }
   | {
       id: string;
-      role: 'user' | 'system';
+      role: 'user' | 'assistant';
+      type: 'text';
+      masked: string;
+      original?: string;
+      streaming?: boolean;
+    }
+  | {
+      id: string;
+      role: 'user' | 'assistant';
       type: 'image';
       originalThumbUrl: string;
       redactedUrl: string;
@@ -51,10 +59,7 @@ export function ChatStream({ messages }: { messages: Message[] }) {
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Scrollable area */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden p-4"
-      >
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center space-y-4">
@@ -74,7 +79,9 @@ export function ChatStream({ messages }: { messages: Message[] }) {
                 </svg>
               </div>
               <div>
-                <h3 className="text-lg font-medium text-white mb-2">Start a private conversation</h3>
+                <h3 className="text-lg font-medium text-white mb-2">
+                  Start a private conversation
+                </h3>
                 <p className="text-gray-400 text-sm">
                   Type sensitive information below and it will be automatically redacted
                 </p>
@@ -99,35 +106,54 @@ export function ChatStream({ messages }: { messages: Message[] }) {
             <div className="space-y-6">
               {messages.map((m) => (
                 <div key={m.id} className="flex">
-                  <div className="flex-shrink-0 w-8 h-8 bg-[#10a37f] rounded-full flex items-center justify-center mr-3">
-                    <span className="text-white text-sm font-medium">U</span>
+                  <div
+                    className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mr-3 ${
+                      m.role === 'user' ? 'bg-[#10a37f]' : 'bg-[#6366f1]'
+                    }`}
+                  >
+                    <span className="text-white text-sm font-medium">
+                      {m.role === 'user' ? 'U' : 'AI'}
+                    </span>
                   </div>
                   <div className="flex-1 space-y-2">
                     <div className="text-gray-100">
                       {m.type === 'text' ? (
                         <div className="prose prose-invert max-w-none">
-                          <p className="whitespace-pre-wrap break-all">{m.masked}</p>
+                          <p className="whitespace-pre-wrap break-words">
+                            <RedactedText text={m.masked} />
+                            {m.type === 'text' && m.streaming && (
+                              <span className="inline-block w-2 h-5 bg-gray-400 ml-1 animate-pulse"></span>
+                            )}
+                          </p>
                         </div>
                       ) : (
-                        <button
-                          className="block focus:outline-none group"
-                          onClick={() => setPreview(m)}
-                          aria-label="View image comparison"
-                        >
-                          <div className="relative inline-block">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={m.originalThumbUrl}
-                              alt="uploaded"
-                              className="h-32 w-auto max-w-full rounded-lg border border-gray-600 transition-transform group-hover:scale-105"
-                            />
-                            <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <span className="text-white text-sm font-medium bg-black/60 px-2 py-1 rounded">
-                                Click to compare
-                              </span>
+                        <div className="space-y-3">
+                          <div className="text-sm text-gray-300 font-medium">Image Comparison</div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <div className="text-xs text-gray-400 mb-2">Original</div>
+                              <img
+                                src={m.originalThumbUrl}
+                                alt="Original image"
+                                className="w-full h-32 object-cover rounded-lg border border-gray-600"
+                              />
+                            </div>
+                            <div>
+                              <div className="text-xs text-gray-400 mb-2">Privacy Protected</div>
+                              <img
+                                src={m.redactedUrl}
+                                alt="Redacted image"
+                                className="w-full h-32 object-cover rounded-lg border border-gray-600"
+                              />
                             </div>
                           </div>
-                        </button>
+                          <button
+                            onClick={() => setPreview(m)}
+                            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                          >
+                            View full size comparison →
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>

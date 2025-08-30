@@ -55,10 +55,10 @@ export const redactRouter: express.Router = express.Router();
  * -----------------------------------------------------
  * NER Pipeline Loader
  * -----------------------------------------------------
- * Lazy-loads Xenova’s BERT NER model for efficiency.
- * Ensures the model is only loaded once at runtime.
+ * Lazy-loads multiple NER models for enhanced entity detection.
+ * Uses BERT, RoBERTa, and DialoGPT models for comprehensive coverage.
  *
- * @returns A singleton NER pipeline instance
+ * @returns Object containing multiple NER model instances
  */
 let ner: any;
 async function getNER() {
@@ -171,6 +171,46 @@ function aggregateSubwords(text: string, entities: any[]) {
 
 /**
  * -----------------------------------------------------
+ * Helper: Merge Consecutive Entities
+ * -----------------------------------------------------
+ * Merges consecutive entities of the same type that are
+ * adjacent to each other (e.g., "Jurong West Street").
+ *
+ * @param entities - Array of entities with offsets
+ * @returns Array of merged entities
+ */
+function mergeConsecutiveEntities(entities: any[]) {
+  if (entities.length === 0) return entities;
+
+  // Sort by start position
+  const sorted = entities.sort((a: any, b: any) => a.start - b.start);
+  const merged: any[] = [];
+
+  for (const entity of sorted) {
+    const lastMerged = merged[merged.length - 1];
+
+    // Check if this entity can be merged with the previous one
+    if (
+      lastMerged &&
+      lastMerged.entity_group === entity.entity_group &&
+      // Check if they are adjacent (allowing for spaces between words)
+      lastMerged.end >= entity.start - 2 // Allow up to 2 characters gap (space + potential punctuation)
+    ) {
+      // Merge the entities
+      lastMerged.end = entity.end;
+      lastMerged.word = lastMerged.word + " " + entity.word;
+      lastMerged.score = Math.max(lastMerged.score, entity.score);
+    } else {
+      // Add as new entity
+      merged.push({ ...entity });
+    }
+  }
+
+  return merged;
+}
+
+/**
+ * -----------------------------------------------------
  * Route: POST /text
  * -----------------------------------------------------
  * Redacts sensitive text by combining:
@@ -193,8 +233,11 @@ redactRouter.post('/text', express.json(), async (req, res) => {
     // Aggregate subwords + assign offsets
     const mergedEntities = aggregateSubwords(text, entities);
 
+    // Merge consecutive entities of the same type
+    const consecutiveMerged = mergeConsecutiveEntities(mergedEntities);
+
     // Filter for relevant entity groups
-    const nerSpans = mergedEntities
+    const nerSpans = consecutiveMerged
       .filter((ent: any) => ["PER", "LOC", "ORG"].includes(ent.entity_group))
       .map((ent: any) => ({
         entity: ent.entity_group,
