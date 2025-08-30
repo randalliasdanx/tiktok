@@ -5,6 +5,7 @@ import { ensureMasked } from '../utils/policy';
 export const llmRouter = express.Router();
 
 // Initialize OpenAI client
+console.log('this is the keyof the openai api key', process.env.OPENAI_API_KEY);
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY, 
 });

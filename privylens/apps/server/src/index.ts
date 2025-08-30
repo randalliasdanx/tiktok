@@ -1,4 +1,5 @@
 import express from 'express';
+import 'dotenv/config';
 import cors from 'cors';
 import { redactRouter } from './routes/redact.js';
 import { llmRouter } from './routes/llm.js';
