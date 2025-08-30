@@ -213,7 +213,7 @@ export function App() {
             </div>
           </div>
         </div>
-      </aside>
+      </div>
 
       {/* Main Chat Area - Full ChatGPT style */}
       <div className="flex-1 flex flex-col bg-[#0a0a0a]/90 backdrop-blur-xl relative z-10">
@@ -232,14 +232,14 @@ export function App() {
               Your messages and images are automatically redacted for privacy
             </p>
           </div>
-        </header>
+        </div>
 
         {/* Chat Messages Area */}
         <div className="flex-1 overflow-y-auto animate-in slide-in-from-bottom duration-500 delay-200">
           <div className="max-w-4xl mx-auto px-4 py-6">
             <ChatStream messages={messages} />
           </div>
-        </section>
+        </div>
 
         {/* Input Area - ChatGPT style with + button */}
         <div className="border-t border-gray-800/50 bg-[#0a0a0a]/80 backdrop-blur-xl p-4 animate-in slide-in-from-bottom duration-500 delay-300">
@@ -260,9 +260,8 @@ export function App() {
               </div>
             </div>
           </div>
-        </footer>
-      </main>
+        </div>
+      </div>
     </div>
-  </div>
-);
+  );
 }
