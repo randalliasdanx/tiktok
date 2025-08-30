@@ -4,7 +4,7 @@ import { ChatComposer } from '@/components/ChatComposer';
 import { ChatStream, Message } from '@/components/ChatStream';
 //import { ImageDropzone } from '@/components/ImageDropzone';
 import FaceRedactor from '@/components/FaceRedactor';
-import { streamLLMResponse, ChatMessage } from '@/lib/api';
+import { streamLLMResponse, ChatMessage, blobUrlToBase64 } from '@/lib/api';
 
 export function App() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -33,9 +33,15 @@ export function App() {
     original: string,
   ) => {
     console.log('handleRedactedText called with:', { masked, spans, original });
-    const userMsg: Message = { id: crypto.randomUUID(), role: 'user', type: 'text', masked, original };
+    const userMsg: Message = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      type: 'text',
+      masked,
+      original,
+    };
     console.log('Adding message:', userMsg);
-    
+
     // Add user message
     setMessages((m) => {
       const newMessages = [...m, userMsg];
@@ -45,80 +51,114 @@ export function App() {
 
     // Create assistant message for streaming
     const assistantId = crypto.randomUUID();
-    const assistantMsg: Message = { 
-      id: assistantId, 
-      role: 'assistant', 
-      type: 'text', 
-      masked: '', 
-      streaming: true 
+    const assistantMsg: Message = {
+      id: assistantId,
+      role: 'assistant',
+      type: 'text',
+      masked: '',
+      streaming: true,
     };
-    
+
     setMessages((m) => [...m, assistantMsg]);
 
-    // Build conversation history for API
+    // Build conversation history for API and collect recent images
     const conversationHistory: ChatMessage[] = [];
-    
-    // Get the current messages state
-    setMessages((currentMessages) => {
-      // Build conversation history from current messages (excluding the streaming assistant message)
-      const historyMessages = currentMessages.filter(msg => 
-        msg.type === 'text' && !msg.streaming
-      );
-      
-      for (const msg of historyMessages) {
+
+    // Get current messages synchronously - we need this for image collection
+    const currentMessages = messages;
+    console.log('📝 All current messages:', currentMessages);
+
+    // Build conversation history from current messages (excluding the streaming assistant message)
+    const historyMessages = currentMessages.filter(
+      (msg) => msg.type === 'image' || (msg.type === 'text' && !msg.streaming),
+    );
+
+    console.log('📋 Filtered history messages:', historyMessages);
+
+    for (const msg of historyMessages) {
+      if (msg.type === 'text') {
         conversationHistory.push({
           role: msg.role,
-          content: msg.masked
+          content: msg.masked,
         });
       }
-      
-      return currentMessages;
+    }
+
+    // Collect recent image messages (last 5 for context)
+    const imageMessages = historyMessages
+      .filter((msg) => msg.type === 'image' && msg.role === 'user')
+      .slice(-5);
+
+    console.log('🖼️ Found image messages:', imageMessages);
+
+    const recentImages: string[] = [];
+    imageMessages.forEach((msg) => {
+      if (msg.type === 'image') {
+        console.log('  - Adding image URL:', msg.redactedUrl);
+        recentImages.push(msg.redactedUrl);
+      }
     });
+
+    // Convert image URLs to base64 data URLs
+    console.log('🖼️ Frontend Image Debug:');
+    console.log('  - Recent images count:', recentImages.length);
+    console.log('  - Recent image URLs:', recentImages);
+
+    const imageBase64s: string[] = [];
+    try {
+      for (const imageUrl of recentImages) {
+        console.log('  - Converting image to base64:', imageUrl);
+        const base64 = await blobUrlToBase64(imageUrl);
+        console.log('  - Base64 conversion success, length:', base64.length);
+        imageBase64s.push(base64);
+      }
+    } catch (error) {
+      console.warn('Failed to convert some images to base64:', error);
+    }
+
+    console.log('  - Final base64 images count:', imageBase64s.length);
 
     // Stream LLM response
     try {
       await streamLLMResponse(
         masked,
         conversationHistory,
+        imageBase64s,
         (token: string) => {
           // Update the assistant message with new tokens
-          setMessages((m) => 
-            m.map((msg) => 
-              msg.id === assistantId 
+          setMessages((m) =>
+            m.map((msg) =>
+              msg.id === assistantId && msg.type === 'text'
                 ? { ...msg, masked: msg.masked + token, streaming: true }
-                : msg
-            )
+                : msg,
+            ),
           );
         },
         () => {
           // Mark streaming as complete
-          setMessages((m) => 
-            m.map((msg) => 
-              msg.id === assistantId 
-                ? { ...msg, streaming: false }
-                : msg
-            )
+          setMessages((m) =>
+            m.map((msg) => (msg.id === assistantId ? { ...msg, streaming: false } : msg)),
           );
         },
         (error: string) => {
           console.error('LLM streaming error:', error);
-          setMessages((m) => 
-            m.map((msg) => 
-              msg.id === assistantId 
+          setMessages((m) =>
+            m.map((msg) =>
+              msg.id === assistantId
                 ? { ...msg, masked: `Error: ${error}`, streaming: false }
-                : msg
-            )
+                : msg,
+            ),
           );
-        }
+        },
       );
     } catch (error) {
       console.error('Failed to start LLM stream:', error);
-      setMessages((m) => 
-        m.map((msg) => 
-          msg.id === assistantId 
+      setMessages((m) =>
+        m.map((msg) =>
+          msg.id === assistantId
             ? { ...msg, masked: 'Failed to get response', streaming: false }
-            : msg
-        )
+            : msg,
+        ),
       );
     }
   };
@@ -135,92 +175,52 @@ export function App() {
   };
 
   return (
-    <div className="flex h-screen bg-[#212121] text-gray-100">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       {/* Sidebar - ChatGPT style */}
-      <div className="w-64 bg-[#171717] border-r border-gray-600 flex flex-col">
-        <div className="p-4 border-b border-gray-600">
+      <div className="w-64 bg-gray-900 flex flex-col">
+        <div className="p-4 border-b border-gray-700">
           <h1 className="text-xl font-semibold text-white">PrivyLens</h1>
-          <p className="text-sm text-gray-400 mt-1">Privacy-first redaction</p>
+          <p className="text-sm text-gray-400 mt-1">Privacy-first AI chat</p>
         </div>
 
         <div className="flex-1 p-4">
           <div className="space-y-4">
-            <section className="bg-[#2f2f2f] rounded-lg p-4 border border-gray-600">
+            <section className="bg-gray-800 rounded-lg p-4 border border-gray-700">
               <h3 className="font-medium text-white mb-3">Privacy Settings</h3>
               <PolicyPopover policy={policy} onChange={onPolicyChange} />
             </section>
 
             <div className="text-xs text-gray-500 p-3">
               <p>✓ Client-side processing</p>
-              <p>✓ No data sent to servers</p>
-              <p>✓ Real-time redaction</p>
+              <p>✓ Auto redaction</p>
+              <p>✓ Image privacy</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main content area - Full ChatGPT style */}
-      <div className="flex-1 flex flex-col">
+      {/* Main Chat Area - ChatGPT style */}
+      <div className="flex-1 flex flex-col bg-white dark:bg-gray-800">
         {/* Header */}
-        <div className="border-b border-gray-600 bg-[#2f2f2f] p-4">
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-lg font-semibold text-white">Face & Privacy Redaction</h2>
-            <p className="text-sm text-gray-400">
-              Automatically blur faces and redact sensitive information
+        <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">PrivyLens Chat</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Your messages and images are automatically redacted for privacy
             </p>
           </div>
         </div>
 
-        <div className="flex-1 overflow-hidden">
-          <div className="h-full max-w-6xl mx-auto px-6 py-6">
-            {/* Three-column layout - Face redaction now main focus */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 h-full">
-              {/* Main Face Redaction section - takes up 2 columns */}
-              <div className="xl:col-span-7 flex flex-col bg-[#2f2f2f] rounded-lg border border-gray-600 overflow-hidden">
-                <div className="p-4 border-b border-gray-600 bg-[#2a2a2a]">
-                  <h3 className="font-semibold text-white">Face Redaction Studio</h3>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Upload images to automatically detect and blur faces with precision
-                  </p>
-                </div>
-                <div className="flex-1 p-6">
-                  <FaceRedactor onImageReady={handleImageUploaded} />
-                </div>
-              </div>
-
-              {/* Right panel - Text tools */}
-              <div className="xl:col-span-5 flex flex-col space-y-6">
-                {/* Text Redaction Chat */}
-                <div className="bg-[#2f2f2f] rounded-lg border border-gray-600 flex-1 flex flex-col min-h-0">
-                  <div className="p-4 border-b border-gray-600 bg-[#2a2a2a]">
-                    <h3 className="font-semibold text-white">Text Redaction</h3>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Type sensitive info - auto-redacted
-                    </p>
-                  </div>
-                    <div className="flex h-screen bg-[#212121] max-h-[70vh] text-gray-100 overflow-y-auto ">
-                      <ChatStream messages={messages} />
-                   </div>
-                </div>
-
-                {/* Image Upload for Chat */}
-                {/*<div className="bg-[#2f2f2f] rounded-lg border border-gray-600 overflow-hidden">
-                  <div className="p-4 border-b border-gray-600 bg-[#2a2a2a]">
-                    <h3 className="font-semibold text-white">Add to Chat</h3>
-                    <p className="text-xs text-gray-400 mt-1">Upload images for chat</p>
-                  </div>
-                  <div className="p-4">
-                    <ImageDropzone onUploaded={handleImageUploaded} policy={policy} />
-                  </div>
-                </div>*/}
-              </div>
-            </div>
+        {/* Messages Area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto">
+            <ChatStream messages={messages} />
           </div>
         </div>
 
-        {/* Input area - ChatGPT style */}
-        <div className="border-t border-gray-600 bg-transparent p-4">
-          <div className="max-w-4xl mx-auto">
+        {/* Input Area - ChatGPT style */}
+        <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+          <div className="max-w-3xl mx-auto">
             <ChatComposer
               onRedacted={handleRedactedText}
               onImageAttached={handleImageUploaded}

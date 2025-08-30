@@ -15,6 +15,7 @@
     "@privylens/redaction-image": "workspace:*",
     "@privylens/redaction-text": "workspace:*",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
     "express": "^4.19.2",
     "multer": "^1.4.5-lts.1",
     "openai": "^5.16.0",

@@ -1,16 +1,23 @@
 import express from 'express';
 import OpenAI from 'openai';
-import { ensureMasked } from '../utils/policy';
+import { ensureMasked } from '../utils/policy.js';
 
-export const llmRouter = express.Router();
+export const llmRouter: express.Router = express.Router();
 
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY, 
 });
 
-llmRouter.post('/proxy', express.json(), async (req, res) => {
-  const { masked, messages = [] } = req.body ?? {};
+llmRouter.post('/proxy', async (req, res) => {
+  const { masked, messages = [], images = [] } = req.body ?? {};
+  
+  // Debug logging
+  console.log('🔍 LLM Request Debug:');
+  console.log('  - Masked text:', masked);
+  console.log('  - Messages count:', messages.length);
+  console.log('  - Images count:', images.length);
+  console.log('  - Images data:', images.length > 0 ? 'Present (first 100 chars): ' + images[0]?.substring(0, 100) + '...' : 'None');
   
   if (typeof masked !== 'string') {
     return res.status(400).json({ error: 'Invalid body: masked required' });
@@ -39,16 +46,56 @@ llmRouter.post('/proxy', express.json(), async (req, res) => {
       ...messages.map((msg: any) => ({
         role: msg.role === 'user' ? 'user' as const : 'assistant' as const,
         content: msg.content
-      })),
-      {
-        role: 'user' as const,
-        content: masked
-      }
+      }))
     ];
+
+    // Build the current user message with text and images
+    const currentUserMessage: any = {
+      role: 'user' as const,
+      content: []
+    };
+
+    // Add text content if provided
+    if (masked.trim()) {
+      currentUserMessage.content.push({
+        type: 'text',
+        text: masked
+      });
+    }
+
+    // Add image content if provided
+    if (images && images.length > 0) {
+      for (const imageData of images) {
+        currentUserMessage.content.push({
+          type: 'image_url',
+          image_url: {
+            url: imageData,
+            detail: 'high'
+          }
+        });
+      }
+    }
+
+    // If no content, fall back to just text
+    if (currentUserMessage.content.length === 0) {
+      currentUserMessage.content = masked;
+    }
+
+    conversationMessages.push(currentUserMessage);
+
+    // Debug logging for OpenAI request
+    const selectedModel = images && images.length > 0 ? 'gpt-4o' : 'gpt-3.5-turbo';
+    console.log('🤖 OpenAI Request Debug:');
+    console.log('  - Model:', selectedModel);
+    console.log('  - Message count:', conversationMessages.length);
+    console.log('  - Last message content type:', Array.isArray(currentUserMessage.content) ? 'array (multimodal)' : 'string (text-only)');
+    if (Array.isArray(currentUserMessage.content)) {
+      console.log('  - Content parts:', currentUserMessage.content.map(part => part.type).join(', '));
+    }
 
     // Create streaming chat completion
     const stream = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: selectedModel,
       messages: conversationMessages,
       stream: true,
       temperature: 0.7,
