@@ -2,6 +2,8 @@ import React, { useRef, useState } from 'react';
 import { detectFaces } from '../lib/face.js';
 import { pixelateRegions } from '../lib/redact.js';
 import { ImagePreviewDialog } from './ImagePreviewDialog.js';
+import { saveImageRedaction } from '@/lib/history';
+import { supabase } from '../supabase/client';
 
 interface FaceRedactorProps {
   onImageReady?: (originalUrl: string, redactedUrl: string) => void;
@@ -53,6 +55,17 @@ export default function FaceRedactor({ onImageReady }: FaceRedactorProps) {
       }));
       const { dataUrl } = await pixelateRegions(file, facesWithMargin, 0.02); // Much heavier blur
       setRedactedUrl(dataUrl);
+      const user = (await supabase.auth.getUser()).data.user;
+      if (user) {
+        await saveImageRedaction({
+          userId: user.id,
+          originalUrl: localUrl,
+          redactedUrl: dataUrl,
+          facesCount: faces.length,
+          // choose whether to store originals
+          saveOriginal: false, // or toggle from a user setting
+        });
+      }
     } catch (e: any) {
       // eslint-disable-next-line no-console
       console.error(e);

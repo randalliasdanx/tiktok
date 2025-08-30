@@ -2,10 +2,14 @@ import React, { useState } from 'react';
 import { PolicyPopover } from '@/components/PolicyPopover';
 import { ChatComposer } from '@/components/ChatComposer';
 import { ChatStream, Message } from '@/components/ChatStream';
-//import { ImageDropzone } from '@/components/ImageDropzone';
 import FaceRedactor from '@/components/FaceRedactor';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/supabase/client'; // your client factory
+import { saveTextRedaction, saveImageRedaction } from '@/lib/history';
+
 
 export function App() {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
   const [policy, setPolicy] = useState<Record<string, boolean>>(() => {
     if (typeof window === 'undefined') return {} as any;
@@ -19,6 +23,11 @@ export function App() {
     }
   });
 
+  async function blobFromUrl(url: string) {
+    const res = await fetch(url);
+    return await res.blob();
+  }
+
   const onPolicyChange = (p: Record<string, boolean>) => {
     setPolicy(p);
     try {
@@ -26,16 +35,28 @@ export function App() {
     } catch {}
   };
 
-  const handleRedactedText = (
+  const handleRedactedText = async (
     masked: string,
     spans: Array<{ start: number; end: number; label: string }>,
     original: string,
   ) => {
     const msg: Message = { id: crypto.randomUUID(), role: 'user', type: 'text', masked, original };
     setMessages((m) => [...m, msg]);
+
+    const { data: { user } = { user: null } } = await supabase.auth.getUser();
+    if (user) {
+      await saveTextRedaction({
+        userId: user.id,
+        masked,
+        original,
+        saveOriginal: false,
+        spans,
+        metadata: { policySnapshot: policy, source: 'chat-composer' },
+      });
+    }
   };
 
-  const handleImageUploaded = (originalThumbUrl: string, redactedUrl: string) => {
+  const handleImageUploaded = async (originalThumbUrl: string, redactedUrl: string) => {
     const msg: Message = {
       id: crypto.randomUUID(),
       role: 'user',
@@ -44,6 +65,17 @@ export function App() {
       redactedUrl,
     };
     setMessages((m) => [...m, msg]);
+
+    const { data: { user } = { user: null } } = await supabase.auth.getUser();
+    if (user) {
+      const [redactedBlob] = await Promise.all([blobFromUrl(redactedUrl)]);
+      await saveImageRedaction({
+        userId: user.id,
+        redactedBlob,
+        originalBlob: null,
+        metadata: { policySnapshot: policy, source: 'face-redactor' },
+      });
+    }
   };
 
   return (
@@ -67,6 +99,13 @@ export function App() {
               <p>✓ No data sent to servers</p>
               <p>✓ Real-time redaction</p>
             </div>
+            {/* Create History Tab, that loads the History.tsx page */}
+            <button
+              className="w-full text-left px-3 py-2 rounded hover:bg-[#2a2a2a] transition"
+              onClick={() => navigate('/history')}
+            >
+              My History
+            </button>
           </div>
         </div>
       </div>
@@ -96,7 +135,7 @@ export function App() {
                   </p>
                 </div>
                 <div className="flex-1 p-6">
-                  <FaceRedactor onImageReady={handleImageUploaded} />
+                  <FaceRedactor onImageReady={(o, r) => { void handleImageUploaded(o, r); }} />
                 </div>
               </div>
 
@@ -110,9 +149,9 @@ export function App() {
                       Type sensitive info - auto-redacted
                     </p>
                   </div>
-                    <div className="flex h-screen bg-[#212121] max-h-[70vh] text-gray-100 overflow-y-auto ">
+                    <div className="flex-1 min-h-0 overflow-hidden">
                       <ChatStream messages={messages} />
-                   </div>
+                    </div>
                 </div>
 
                 {/* Image Upload for Chat */}
@@ -134,8 +173,8 @@ export function App() {
         <div className="border-t border-gray-600 bg-transparent p-4">
           <div className="max-w-4xl mx-auto">
             <ChatComposer
-              onRedacted={handleRedactedText}
-              onImageAttached={handleImageUploaded}
+              onRedacted={(...args) => { void handleRedactedText(...args as any); }}
+              onImageAttached={(o, r) => { void handleImageUploaded(o, r); }}
               policy={policy}
             />
           </div>
