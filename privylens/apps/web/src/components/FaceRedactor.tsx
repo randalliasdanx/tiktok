@@ -2,11 +2,16 @@ import React, { useRef, useState } from 'react';
 import { detectFaces } from '../lib/face.js';
 import { pixelateRegions } from '../lib/redact.js';
 import { ImagePreviewDialog } from './ImagePreviewDialog.js';
+import { ImageProcessingPipeline } from './ImageProcessingPipeline';
 import { saveImageRedaction } from '@/lib/history';
 import { supabase } from '../supabase/client';
 
 interface FaceRedactorProps {
-  onImageReady?: (originalUrl: string, redactedUrl: string) => void;
+  onImageReady?: (
+    originalUrl: string,
+    redactedUrl: string,
+    choice?: 'original' | 'redacted',
+  ) => void;
 }
 
 export default function FaceRedactor({ onImageReady }: FaceRedactorProps) {
@@ -76,7 +81,8 @@ export default function FaceRedactor({ onImageReady }: FaceRedactorProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Upload Button */}
       <div className="flex flex-col gap-3">
         <input
           ref={inputRef}
@@ -89,132 +95,164 @@ export default function FaceRedactor({ onImageReady }: FaceRedactorProps) {
           className="hidden"
         />
         <button
-          className="w-full px-4 py-2 rounded-lg bg-[#10a37f] hover:bg-[#0d8a6b] text-white transition-colors text-sm font-medium"
+          className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white transition-all duration-200 text-sm font-medium transform hover:scale-105 shadow-lg"
           onClick={() => inputRef.current?.click()}
+          disabled={busy}
         >
-          Choose Image to Redact
+          {busy ? 'Processing...' : 'Choose Image to Redact'}
         </button>
       </div>
 
-      {busy && (
-        <div className="flex items-center gap-2 text-gray-300 text-sm">
-          <div className="w-4 h-4 border-2 border-gray-500 border-t-gray-300 rounded-full animate-spin"></div>
-          Detecting faces and redacting…
-        </div>
-      )}
-
+      {/* Error Display */}
       {err && (
-        <div className="text-red-400 text-sm bg-red-900/20 border border-red-800 rounded-lg p-3">
-          {String(err)}
-        </div>
-      )}
-
-      {!busy && facesFound > 0 && (
-        <div className="text-green-400 text-sm bg-green-900/20 border border-green-800 rounded-lg p-3">
-          <div className="flex items-center justify-between">
-            <span>
-              ✓ {facesFound} face{facesFound > 1 ? 's' : ''} detected and redacted
-            </span>
-            <span className="text-xs text-green-300">TinyFaceDetector</span>
+        <div className="text-red-400 text-sm bg-red-900/20 border border-red-600 rounded-xl p-4 animate-in slide-in-from-top duration-300">
+          <div className="flex items-center">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            {String(err)}
           </div>
         </div>
       )}
 
-      {!busy && facesFound === 0 && originalUrl && (
-        <div className="text-yellow-400 text-sm bg-yellow-900/20 border border-yellow-800 rounded-lg p-3">
-          <div>
-            ⚠ No faces detected in this image
-            {detectionInfo && (
-              <div className="text-xs text-yellow-300 mt-1">Tried TinyFaceDetector model</div>
+      {/* Processing Pipeline */}
+      {originalUrl && (
+        <ImageProcessingPipeline
+          originalUrl={originalUrl}
+          redactedUrl={redactedUrl}
+          isProcessing={busy}
+          facesFound={facesFound}
+          onComplete={() => {
+            // Optional callback when processing completes
+          }}
+        />
+      )}
+
+      {/* Results */}
+      {!busy && originalUrl && (
+        <div className="space-y-4">
+          {facesFound > 0 && (
+            <div className="text-green-400 text-sm bg-green-900/20 border border-green-600 rounded-xl p-4 animate-in slide-in-from-bottom duration-300">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  <span>
+                    {facesFound} face{facesFound > 1 ? 's' : ''} detected and protected
+                  </span>
+                </div>
+                <span className="text-xs text-green-300 bg-green-800/30 px-2 py-1 rounded">
+                  TinyFaceDetector
+                </span>
+              </div>
+            </div>
+          )}
+
+          {facesFound === 0 && (
+            <div className="text-yellow-400 text-sm bg-yellow-900/20 border border-yellow-600 rounded-xl p-4 animate-in slide-in-from-bottom duration-300">
+              <div className="flex items-center">
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+                <div>
+                  No faces detected in this image
+                  {detectionInfo && (
+                    <div className="text-xs text-yellow-300 mt-1">Tried TinyFaceDetector model</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            {redactedUrl && (
+              <button
+                onClick={() => setPreview({ originalUrl, redactedUrl })}
+                className="sm:flex-1 px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                  />
+                </svg>
+                Full Size View
+              </button>
+            )}
+
+            {/* Add original to chat */}
+            {originalUrl && (
+              <button
+                className="sm:flex-1 px-3 py-2 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white text-sm font-medium transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg"
+                onClick={() => {
+                  if (onImageReady) {
+                    onImageReady(originalUrl!, redactedUrl || originalUrl!, 'original');
+                  }
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 12H6" />
+                </svg>
+                Add Original to Chat
+              </button>
+            )}
+
+            {/* Add redacted to chat */}
+            {redactedUrl && (
+              <button
+                className="sm:flex-1 px-3 py-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white text-sm font-medium transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg"
+                onClick={() => {
+                  if (onImageReady) {
+                    onImageReady(originalUrl!, redactedUrl, 'redacted');
+                  }
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+                Add Redacted to Chat
+              </button>
             )}
           </div>
         </div>
       )}
 
-      {originalUrl && (
-        <div className="space-y-4">
-          <div className="text-sm text-gray-900 dark:text-gray-100 font-medium">
-            Image Processing Result
-          </div>
-
-          {/* Side by side comparison */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Original</div>
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border border-gray-300 dark:border-gray-600">
-                <img
-                  src={originalUrl}
-                  alt="Original image"
-                  className="w-full h-48 object-cover rounded-lg"
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                Privacy Protected {busy && '(Processing...)'}
-              </div>
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border border-gray-300 dark:border-gray-600 relative">
-                {/* Show transition from original to redacted */}
-                <img
-                  src={redactedUrl || originalUrl}
-                  alt="Redacted image"
-                  className={`w-full h-48 object-cover rounded-lg transition-all duration-1000 ${
-                    busy ? 'filter blur-sm' : ''
-                  }`}
-                />
-                {busy && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
-                    <div className="flex items-center gap-2 bg-white/90 dark:bg-gray-900/90 px-3 py-2 rounded-lg">
-                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-sm text-gray-900 dark:text-gray-100">
-                        Processing faces...
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {redactedUrl && (
-            <button
-              onClick={() => setPreview({ originalUrl, redactedUrl })}
-              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-            >
-              View full size comparison →
-            </button>
-          )}
-
-          {/* Add to Chat button */}
-          {redactedUrl && (
-            <button
-              className="w-full px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
-              onClick={() => {
-                if (onImageReady) {
-                  onImageReady(originalUrl!, redactedUrl);
-                }
-                // Also add to chat composer if available
-                const globalAttach = (window as any).attachImageToChat;
-                if (globalAttach) {
-                  globalAttach(originalUrl!, redactedUrl);
-                }
-              }}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                />
-              </svg>
-              Add to Chat
-            </button>
-          )}
-        </div>
-      )}
-
+      {/* Image Preview Dialog */}
       {preview && (
         <ImagePreviewDialog
           open={!!preview}

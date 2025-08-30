@@ -3,6 +3,7 @@ import { PolicyPopover } from '@/components/PolicyPopover';
 import { ChatComposer } from '@/components/ChatComposer';
 import { ChatStream, Message } from '@/components/ChatStream';
 import FaceRedactor from '@/components/FaceRedactor';
+import { HighTechBackground } from '@/components/HighTechBackground';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/supabase/client'; // your client factory
 import { saveTextRedaction, saveImageRedaction } from '@/lib/history';
@@ -40,13 +41,15 @@ export function App() {
     spans: Array<{ start: number; end: number; label: string }>,
     original: string,
   ) => {
-    // Add user message
+    // Add user message with redaction animation
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: 'user',
       type: 'text',
       masked,
       original,
+      spans,
+      showAnimation: spans.length > 0, // Only animate if there are redactions
     };
     setMessages((m) => [...m, userMsg]);
 
@@ -73,7 +76,8 @@ export function App() {
       .slice(-3) // Last 3 images
       .map(async (msg) => {
         if (msg.type === 'image') {
-          return await blobUrlToBase64(msg.redactedUrl);
+          const urlToUse = msg.choice === 'original' ? msg.originalThumbUrl : msg.redactedUrl;
+          return await blobUrlToBase64(urlToUse);
         }
         return '';
       });
@@ -117,13 +121,18 @@ export function App() {
     );
   };
 
-  const handleImageUploaded = async (originalThumbUrl: string, redactedUrl: string) => {
+  const handleImageUploaded = async (
+    originalThumbUrl: string,
+    redactedUrl: string,
+    choice: 'original' | 'redacted' = 'redacted',
+  ) => {
     const msg: Message = {
       id: crypto.randomUUID(),
       role: 'user',
       type: 'image',
       originalThumbUrl,
       redactedUrl,
+      choice,
     };
     setMessages((m) => [...m, msg]);
 
@@ -144,111 +153,112 @@ export function App() {
   };
 
   return (
-  <div className="min-h-screen bg-[#0f1115] text-gray-100">
-    <div className="mx-auto flex h-screen">
-      {/* Sidebar */}
-      <aside className="w-72 bg-[#111417] border-r border-[#2b2f36] flex flex-col">
-        <div className="p-5 border-b border-[#2b2f36]">
-          <h1 className="text-xl font-semibold text-white">PrivyLens</h1>
-          <p className="text-sm text-gray-400 mt-1">Privacy-first redaction</p>
+    <div className="flex h-screen bg-[#0a0a0a] text-white overflow-hidden relative">
+      <HighTechBackground />
+      {/* Sidebar - ChatGPT style */}
+      <div className="w-64 bg-[#0a0a0a]/90 backdrop-blur-xl border-r border-gray-800/50 flex flex-col relative z-10">
+        <div className="p-4 border-b border-gray-800/50">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent animate-in slide-in-from-left duration-500">
+            PrivyLens
+          </h1>
+          <p className="text-sm text-gray-400 mt-1 animate-in slide-in-from-left duration-500 delay-100">
+            Privacy-first AI chat
+          </p>
         </div>
 
-        <div className="flex-1 p-4">
-          <div className="space-y-4">
-            <section className="bg-[#151a20] rounded-2xl p-4 border border-[#2b2f36]">
-              <h3 className="font-medium text-white mb-3">Privacy Settings</h3>
-              <PolicyPopover policy={policy} onChange={onPolicyChange} />
-            </section>
+        <div className="flex-1 p-4 space-y-4">
+          <section className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 backdrop-blur-sm rounded-xl p-4 border border-gray-700/50 shadow-2xl hover:shadow-blue-500/10 transition-all animate-in slide-in-from-left duration-500 delay-200">
+            <h3 className="font-medium text-white mb-3 flex items-center">
+              <span className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse shadow-green-400/50 shadow-lg"></span>
+              Privacy Settings
+            </h3>
+            <PolicyPopover policy={policy} onChange={onPolicyChange} />
+          </section>
 
-            <div className="text-xs text-gray-500 p-3 leading-5">
-              <p>✓ Client-side processing</p>
-              <p>✓ No data sent to servers</p>
-              <p>✓ Real-time redaction</p>
+          <div className="text-xs text-gray-500 p-3 space-y-3 animate-in slide-in-from-left duration-500 delay-300">
+            <div className="flex items-center transition-all duration-300 hover:text-blue-400">
+              <span className="w-1 h-1 bg-blue-400 rounded-full mr-3 animate-pulse"></span>
+              <span className="flex-1">Client-side processing</span>
+              <div className="w-2 h-2 bg-blue-400/20 rounded-full animate-ping"></div>
             </div>
+            <div className="flex items-center transition-all duration-300 hover:text-purple-400">
+              <span className="w-1 h-1 bg-purple-400 rounded-full mr-3 animate-pulse"></span>
+              <span className="flex-1">Auto redaction</span>
+              <div className="w-2 h-2 bg-purple-400/20 rounded-full animate-ping"></div>
+            </div>
+            <div className="flex items-center transition-all duration-300 hover:text-green-400">
+              <span className="w-1 h-1 bg-green-400 rounded-full mr-3 animate-pulse"></span>
+              <span className="flex-1">Image privacy</span>
+              <div className="w-2 h-2 bg-green-400/20 rounded-full animate-ping"></div>
+            </div>
+          </div>
 
-            <button
-              className="inline-flex items-center ml-3 gap-2 self-start
-                        rounded-lg bg-[#404040] border border-[#2b2f36]
-                        text-gray-100 px-3 py-2 text-sm
-                        hover:bg-[#4a4a4a] transition-colors"
-              onClick={() => navigate('/history')}
-            >
-              My Image History
-            </button>
+          <button
+            className="w-full text-left px-3 py-3 rounded-xl bg-gradient-to-r from-gray-800/50 to-gray-700/50 border border-gray-700/50 hover:from-gray-700/70 hover:to-gray-600/70 transition-all text-gray-300 hover:text-white transform hover:scale-105 backdrop-blur-sm shadow-lg hover:shadow-xl animate-in slide-in-from-left duration-500 delay-400"
+            onClick={() => navigate('/history')}
+          >
+            <div className="flex items-center">
+              <span className="text-lg mr-3">📚</span>
+              <span>My History</span>
+              <div className="ml-auto w-1 h-1 bg-gray-600 rounded-full"></div>
+            </div>
+          </button>
+
+          {/* Status indicator */}
+          <div className="mt-auto p-3 rounded-xl bg-gradient-to-r from-green-900/20 to-emerald-900/20 border border-green-700/30 animate-in slide-in-from-left duration-500 delay-500">
+            <div className="flex items-center text-xs text-green-400">
+              <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse shadow-green-400/50 shadow-lg"></div>
+              <span>System Active</span>
+              <div className="ml-auto text-green-300">●</div>
+            </div>
           </div>
         </div>
       </aside>
 
-      {/* Main */}
-      <main className="flex-1 flex flex-col">
+      {/* Main Chat Area - Full ChatGPT style */}
+      <div className="flex-1 flex flex-col bg-[#0a0a0a]/90 backdrop-blur-xl relative z-10">
         {/* Header */}
-        <header className="sticky top-0 z-10 border-b border-[#2b2f36] bg-[#0f1115]/80 backdrop-blur">
-          <div className="max-w-6xl mx-auto px-6 py-4">
-            <h2 className="text-lg font-semibold text-white">Face &amp; Privacy Redaction</h2>
-            <p className="text-sm text-gray-400">
-              Automatically blur faces and redact sensitive information
+        <div className="border-b border-gray-800/50 bg-[#0a0a0a]/80 backdrop-blur-xl p-4 animate-in slide-in-from-top duration-500">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-lg font-semibold text-white flex items-center">
+              <span className="w-3 h-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mr-3 animate-pulse shadow-blue-500/50 shadow-lg"></span>
+              PrivyLens Chat
+              <div className="ml-auto flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-xs text-green-400">Online</span>
+              </div>
+            </h2>
+            <p className="text-sm text-gray-400 animate-in slide-in-from-top duration-500 delay-100">
+              Your messages and images are automatically redacted for privacy
             </p>
           </div>
         </header>
 
-        {/* Content */}
-        <section className="flex-1 overflow-hidden">
-          <div className="h-full max-w-6xl mx-auto px-6 py-6">
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 h-full">
-              {/* Face Redaction */}
-              <section className="xl:col-span-7 flex flex-col rounded-2xl bg-[#151a20] border border-[#2b2f36] overflow-hidden">
-                <div className="p-4 border-b border-[#2b2f36] bg-[#131820]">
-                  <h3 className="font-semibold text-white">Face Redaction Studio</h3>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Upload images to automatically detect and blur faces with precision
-                  </p>
-                </div>
-                <div className="flex-1 p-6">
-                  <FaceRedactor onImageReady={handleImageUploaded} />
-                </div>
-              </section>
-
-              {/* Text Redaction */}
-              <section className="xl:col-span-5 flex flex-col space-y-6">
-                <div className="rounded-2xl bg-[#151a20] border border-[#2b2f36] flex-1 flex flex-col min-h-0">
-                  <div className="p-4 border-b border-[#2b2f36] bg-[#131820] flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-white">Text Redaction</h3>
-                      <p className="text-xs text-gray-400 mt-1">Type sensitive info – auto-redacted</p>
-                    </div>
-                    <button
-                      type="button"
-                      className="px-3 py-1.5 rounded-md text-xs font-medium bg-[#10a37f] hover:bg-[#0d8a6b] text-white"
-                      onClick={() => (window as any).exportMasked?.()}
-                      title="Export .txt"
-                    >
-                      Export .txt
-                    </button>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto">
-                    <div className="px-4 py-3">
-                      <ChatStream messages={messages} />
-                    </div>
-                  </div>
-                </div>
-              </section>
-            </div>
+        {/* Chat Messages Area */}
+        <div className="flex-1 overflow-y-auto animate-in slide-in-from-bottom duration-500 delay-200">
+          <div className="max-w-4xl mx-auto px-4 py-6">
+            <ChatStream messages={messages} />
           </div>
         </section>
 
-        {/* Composer */}
-        <footer className="border-t border-[#2b2f36] bg-[#111417]">
-          <div className="max-w-3xl mx-auto px-4 py-4">
-            <ChatComposer
-              onRedacted={(masked, spans, original) => {
-                void handleRedactedText(masked, spans, original);
-              }}
-              onImageAttached={(o, r) => {
-                void handleImageUploaded(o, r);
-              }}
-              policy={policy}
-            />
+        {/* Input Area - ChatGPT style with + button */}
+        <div className="border-t border-gray-800/50 bg-[#0a0a0a]/80 backdrop-blur-xl p-4 animate-in slide-in-from-bottom duration-500 delay-300">
+          <div className="max-w-4xl mx-auto">
+            <div className="relative">
+              {/* Glow effect behind input */}
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-2xl blur-xl"></div>
+              <div className="relative">
+                <ChatComposer
+                  onRedacted={(masked, spans, original) => {
+                    void handleRedactedText(masked, spans, original);
+                  }}
+                  onImageAttached={(o, r, choice) => {
+                    void handleImageUploaded(o, r, choice);
+                  }}
+                  policy={policy}
+                />
+              </div>
+            </div>
           </div>
         </footer>
       </main>

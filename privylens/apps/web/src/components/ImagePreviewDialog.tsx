@@ -44,39 +44,58 @@ export function ImagePreviewDialog({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Original Image */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              <h4 className="font-medium text-white">Original (Sensitive)</h4>
+        {originalUrl && redactedUrl ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Original Image */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <h4 className="font-medium text-white">Original (Sensitive)</h4>
+              </div>
+              <div className="bg-[#1a1a1a] rounded-lg p-4 border border-gray-600">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={originalUrl}
+                  className="max-h-[50vh] w-auto mx-auto rounded"
+                  alt="Original image with faces visible"
+                />
+              </div>
             </div>
-            <div className="bg-[#1a1a1a] rounded-lg p-4 border border-gray-600">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={originalUrl}
-                className="max-h-[50vh] w-auto mx-auto rounded"
-                alt="Original image with faces visible"
-              />
-            </div>
-          </div>
 
-          {/* Redacted Image */}
+            {/* Redacted Image */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <h4 className="font-medium text-white">Redacted (Safe)</h4>
+              </div>
+              <div className="bg-[#1a1a1a] rounded-lg p-4 border border-gray-600">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={redactedUrl}
+                  className="max-h-[50vh] w-auto mx-auto rounded"
+                  alt="Redacted image with faces blurred"
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              <h4 className="font-medium text-white">Redacted (Safe)</h4>
+              <div
+                className={`w-3 h-3 ${originalUrl ? 'bg-red-500' : 'bg-green-500'} rounded-full`}
+              ></div>
+              <h4 className="font-medium text-white">{originalUrl ? 'Original' : 'Redacted'}</h4>
             </div>
             <div className="bg-[#1a1a1a] rounded-lg p-4 border border-gray-600">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={redactedUrl}
-                className="max-h-[50vh] w-auto mx-auto rounded"
-                alt="Redacted image with faces blurred"
+                src={originalUrl || redactedUrl}
+                className="max-h-[75vh] w-auto mx-auto rounded"
+                alt={originalUrl ? 'Original image' : 'Redacted image'}
               />
             </div>
           </div>
-        </div>
+        )}
 
         <div className="mt-6 text-center">
           <button
