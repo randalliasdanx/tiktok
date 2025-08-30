@@ -3,10 +3,10 @@ import React from 'react';
 import { ImagePreviewDialog } from './ImagePreviewDialog';
 
 export type Message =
-  | { id: string; role: 'user' | 'system'; type: 'text'; masked: string; original?: string }
+  | { id: string; role: 'user' | 'assistant'; type: 'text'; masked: string; original?: string; streaming?: boolean }
   | {
       id: string;
-      role: 'user' | 'system';
+      role: 'user' | 'assistant';
       type: 'image';
       originalThumbUrl: string;
       redactedUrl: string;
@@ -99,14 +99,23 @@ export function ChatStream({ messages }: { messages: Message[] }) {
             <div className="space-y-6">
               {messages.map((m) => (
                 <div key={m.id} className="flex">
-                  <div className="flex-shrink-0 w-8 h-8 bg-[#10a37f] rounded-full flex items-center justify-center mr-3">
-                    <span className="text-white text-sm font-medium">U</span>
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mr-3 ${
+                    m.role === 'user' ? 'bg-[#10a37f]' : 'bg-[#6366f1]'
+                  }`}>
+                    <span className="text-white text-sm font-medium">
+                      {m.role === 'user' ? 'U' : 'AI'}
+                    </span>
                   </div>
                   <div className="flex-1 space-y-2">
                     <div className="text-gray-100">
                       {m.type === 'text' ? (
                         <div className="prose prose-invert max-w-none">
-                          <p className="whitespace-pre-wrap break-all">{m.masked}</p>
+                          <p className="whitespace-pre-wrap break-words">
+                            {m.masked}
+                            {m.type === 'text' && m.streaming && (
+                              <span className="inline-block w-2 h-5 bg-gray-400 ml-1 animate-pulse"></span>
+                            )}
+                          </p>
                         </div>
                       ) : (
                         <button

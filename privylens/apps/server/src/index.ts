@@ -1,11 +1,11 @@
 import express from 'express';
 import cors from 'cors';
-import { redactRouter } from './routes/redact';
-import { llmRouter } from './routes/llm';
+import { redactRouter } from './routes/redact.js';
+import { llmRouter } from './routes/llm.js';
 
 const app = express();
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:3001')
   .split(',')
   .map((s) => s.trim());
 

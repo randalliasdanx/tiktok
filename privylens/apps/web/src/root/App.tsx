@@ -4,6 +4,7 @@ import { ChatComposer } from '@/components/ChatComposer';
 import { ChatStream, Message } from '@/components/ChatStream';
 //import { ImageDropzone } from '@/components/ImageDropzone';
 import FaceRedactor from '@/components/FaceRedactor';
+import { streamLLMResponse, ChatMessage } from '@/lib/api';
 
 export function App() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -26,13 +27,100 @@ export function App() {
     } catch {}
   };
 
-  const handleRedactedText = (
+  const handleRedactedText = async (
     masked: string,
     spans: Array<{ start: number; end: number; label: string }>,
     original: string,
   ) => {
-    const msg: Message = { id: crypto.randomUUID(), role: 'user', type: 'text', masked, original };
-    setMessages((m) => [...m, msg]);
+    console.log('handleRedactedText called with:', { masked, spans, original });
+    const userMsg: Message = { id: crypto.randomUUID(), role: 'user', type: 'text', masked, original };
+    console.log('Adding message:', userMsg);
+    
+    // Add user message
+    setMessages((m) => {
+      const newMessages = [...m, userMsg];
+      console.log('Updated messages:', newMessages);
+      return newMessages;
+    });
+
+    // Create assistant message for streaming
+    const assistantId = crypto.randomUUID();
+    const assistantMsg: Message = { 
+      id: assistantId, 
+      role: 'assistant', 
+      type: 'text', 
+      masked: '', 
+      streaming: true 
+    };
+    
+    setMessages((m) => [...m, assistantMsg]);
+
+    // Build conversation history for API
+    const conversationHistory: ChatMessage[] = [];
+    
+    // Get the current messages state
+    setMessages((currentMessages) => {
+      // Build conversation history from current messages (excluding the streaming assistant message)
+      const historyMessages = currentMessages.filter(msg => 
+        msg.type === 'text' && !msg.streaming
+      );
+      
+      for (const msg of historyMessages) {
+        conversationHistory.push({
+          role: msg.role,
+          content: msg.masked
+        });
+      }
+      
+      return currentMessages;
+    });
+
+    // Stream LLM response
+    try {
+      await streamLLMResponse(
+        masked,
+        conversationHistory,
+        (token: string) => {
+          // Update the assistant message with new tokens
+          setMessages((m) => 
+            m.map((msg) => 
+              msg.id === assistantId 
+                ? { ...msg, masked: msg.masked + token, streaming: true }
+                : msg
+            )
+          );
+        },
+        () => {
+          // Mark streaming as complete
+          setMessages((m) => 
+            m.map((msg) => 
+              msg.id === assistantId 
+                ? { ...msg, streaming: false }
+                : msg
+            )
+          );
+        },
+        (error: string) => {
+          console.error('LLM streaming error:', error);
+          setMessages((m) => 
+            m.map((msg) => 
+              msg.id === assistantId 
+                ? { ...msg, masked: `Error: ${error}`, streaming: false }
+                : msg
+            )
+          );
+        }
+      );
+    } catch (error) {
+      console.error('Failed to start LLM stream:', error);
+      setMessages((m) => 
+        m.map((msg) => 
+          msg.id === assistantId 
+            ? { ...msg, masked: 'Failed to get response', streaming: false }
+            : msg
+        )
+      );
+    }
   };
 
   const handleImageUploaded = (originalThumbUrl: string, redactedUrl: string) => {

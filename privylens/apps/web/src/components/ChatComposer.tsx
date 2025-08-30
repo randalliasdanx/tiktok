@@ -36,12 +36,17 @@ export function ChatComposer({
 
       // Then send text if any
       if (value) {
+        console.log('Submitting text:', value);
+        console.log('Policy:', policy);
         const { masked, spans } = await redactText(value, policy);
+        console.log('Redacted result:', { masked, spans });
         onRedacted(masked, spans, value);
       }
 
       setText('');
       setAttachedImages([]);
+    } catch (error) {
+      console.error('Error in submit:', error);
     } finally {
       setLoading(false);
     }

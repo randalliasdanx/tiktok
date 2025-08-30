@@ -25,4 +25,76 @@ export async function redactImage(file: File): Promise<{ redactedUrl: string; wi
   return { redactedUrl };
 }
 
+export type ChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
+export async function streamLLMResponse(
+  masked: string, 
+  messages: ChatMessage[] = [],
+  onToken: (token: string) => void,
+  onComplete: () => void,
+  onError: (error: string) => void
+): Promise<void> {
+  try {
+    const response = await fetch(`${API_URL}/api/llm/proxy`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ masked, messages }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('Response body is not readable');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          
+          if (data === '[DONE]') {
+            onComplete();
+            return;
+          }
+          
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.content) {
+              onToken(parsed.content);
+            } else if (parsed.error) {
+              onError(parsed.error);
+              return;
+            }
+          } catch (e) {
+            console.warn('Failed to parse SSE data:', data);
+          }
+        }
+      }
+    }
+    
+    onComplete();
+  } catch (error) {
+    onError(error instanceof Error ? error.message : 'Unknown error occurred');
+  }
+}
+
 
