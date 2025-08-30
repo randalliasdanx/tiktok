@@ -40,8 +40,81 @@ export function App() {
     spans: Array<{ start: number; end: number; label: string }>,
     original: string,
   ) => {
-    const msg: Message = { id: crypto.randomUUID(), role: 'user', type: 'text', masked, original };
-    setMessages((m) => [...m, msg]);
+    // Add user message
+    const userMsg: Message = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      type: 'text',
+      masked,
+      original,
+    };
+    setMessages((m) => [...m, userMsg]);
+
+    // Prepare assistant message for streaming
+    const assistantMsgId = crypto.randomUUID();
+    const assistantMsg: Message = {
+      id: assistantMsgId,
+      role: 'assistant',
+      type: 'text',
+      masked: '',
+      streaming: true,
+    };
+    setMessages((m) => [...m, assistantMsg]);
+
+    // Get conversation history for API
+    const conversationHistory: ChatMessage[] = messages.map((msg) => ({
+      role: msg.role,
+      content: msg.type === 'text' ? msg.masked : '[Image]',
+    }));
+
+    // Get images from recent messages
+    const recentImages = messages
+      .filter((msg) => msg.type === 'image')
+      .slice(-3) // Last 3 images
+      .map(async (msg) => {
+        if (msg.type === 'image') {
+          return await blobUrlToBase64(msg.redactedUrl);
+        }
+        return '';
+      });
+
+    const imageDataUrls = await Promise.all(recentImages);
+
+    // Stream ChatGPT response
+    await streamLLMResponse(
+      masked,
+      conversationHistory,
+      imageDataUrls.filter(Boolean),
+      (token: string) => {
+        // Update assistant message with new token
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg.id === assistantMsgId && msg.type === 'text'
+              ? { ...msg, masked: msg.masked + token }
+              : msg,
+          ),
+        );
+      },
+      () => {
+        // Mark streaming as complete
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg.id === assistantMsgId && msg.type === 'text' ? { ...msg, streaming: false } : msg,
+          ),
+        );
+      },
+      (error: string) => {
+        // Handle error
+        console.error('ChatGPT API error:', error);
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg.id === assistantMsgId && msg.type === 'text'
+              ? { ...msg, masked: `Error: ${error}`, streaming: false }
+              : msg,
+          ),
+        );
+      },
+    );
   };
 
   const handleImageUploaded = async (originalThumbUrl: string, redactedUrl: string) => {
@@ -60,7 +133,7 @@ export function App() {
 
       await saveImageRedaction({
         userId: user.id,
-        originalUrl: originalThumbUrl,  // optional if you don’t save originals
+        originalUrl: originalThumbUrl, // optional if you don’t save originals
         redactedUrl,
         facesCount: 0,
         saveOriginal: false,
@@ -141,9 +214,9 @@ export function App() {
                       Type sensitive info - auto-redacted
                     </p>
                   </div>
-                    <div className="flex h-screen bg-[#212121] max-h-[70vh] text-gray-100 overflow-y-auto ">
-                      <ChatStream messages={messages} />
-                   </div>
+                  <div className="flex h-screen bg-[#212121] max-h-[70vh] text-gray-100 overflow-y-auto ">
+                    <ChatStream messages={messages} />
+                  </div>
                 </div>
 
                 {/* Image Upload for Chat */}
@@ -165,8 +238,12 @@ export function App() {
         <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="max-w-3xl mx-auto">
             <ChatComposer
-              onRedacted={(...args) => { void handleRedactedText(...args as any); }}
-              onImageAttached={(o, r) => { void handleImageUploaded(o, r); }}
+              onRedacted={(masked, spans, original) => {
+                void handleRedactedText(masked, spans, original);
+              }}
+              onImageAttached={(o, r) => {
+                void handleImageUploaded(o, r);
+              }}
               policy={policy}
             />
           </div>
