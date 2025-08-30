@@ -32,7 +32,7 @@ export function Landing() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <div className="flex items-center gap-2">
             <span className="inline-block h-7 w-7 rounded-full bg-[#10a37f] shadow-[0_0_25px_#10a37f66]" />
-            <span className="text-sm font-semibold tracking-wide text-gray-100">PrivyLens</span>
+            <span className="text-sm font-semibold tracking-wide text-gray-100">Lens</span>
           </div>
           <button
             onClick={signInWithGoogle}
@@ -60,7 +60,7 @@ export function Landing() {
             </h1>
 
             <p className="mt-4 text-gray-300">
-              PrivyLens runs entirely in your browser—no images or messages are uploaded.
+              Lens runs entirely in your browser—no images or messages are uploaded.
               Toggle what to protect (faces, emails, phones, IDs) and we’ll blur or mask it with precision.
             </p>
 
@@ -148,7 +148,7 @@ export function Landing() {
       {/* --- Footer --- */}
       <footer className="relative z-10 border-t border-white/10">
         <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-gray-400">
-          © {new Date().getFullYear()} PrivyLens — Privacy-first redaction.
+          © {new Date().getFullYear()} Lens — Privacy-first redaction.
         </div>
       </footer>
     </div>

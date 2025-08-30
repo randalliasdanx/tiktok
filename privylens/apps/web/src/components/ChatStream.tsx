@@ -52,7 +52,7 @@ export function ChatStream({ messages }: { messages: Message[] }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `privylens-chat-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.download = `lens-chat-${new Date().toISOString().slice(0, 10)}.txt`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -84,7 +84,7 @@ export function ChatStream({ messages }: { messages: Message[] }) {
               </div>
               <div>
                 <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-3">
-                  Welcome to PrivyLens
+                  Welcome to Lens
                 </h3>
                 <p className="text-gray-400 text-sm leading-relaxed">
                   Start chatting with AI while keeping your sensitive information private. Your
@@ -183,7 +183,7 @@ export function ChatStream({ messages }: { messages: Message[] }) {
                   <div className="flex-1 max-w-3xl">
                     {/* Role Label */}
                     <div className="text-xs text-gray-400 mb-2 font-medium">
-                      {m.role === 'user' ? 'You' : 'PrivyLens AI'}
+                      {m.role === 'user' ? 'You' : 'Lens AI'}
                     </div>
 
                     {/* Message Bubble */}

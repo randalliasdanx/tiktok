@@ -15,7 +15,7 @@ export function App() {
   const [policy, setPolicy] = useState<Record<string, boolean>>(() => {
     if (typeof window === 'undefined') return {} as any;
     try {
-      const raw = localStorage.getItem('privylens-policy');
+      const raw = localStorage.getItem('lens-policy');
       return raw
         ? JSON.parse(raw)
         : { emails: true, phones: true, cards: true, faces: true, plates: true, ids: true };
@@ -32,7 +32,7 @@ export function App() {
   const onPolicyChange = (p: Record<string, boolean>) => {
     setPolicy(p);
     try {
-      localStorage.setItem('privylens-policy', JSON.stringify(p));
+      localStorage.setItem('lens-policy', JSON.stringify(p));
     } catch {}
   };
 
@@ -159,7 +159,7 @@ export function App() {
       <div className="w-64 bg-[#0a0a0a]/90 backdrop-blur-xl border-r border-gray-800/50 flex flex-col relative z-10">
         <div className="p-4 border-b border-gray-800/50">
           <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent animate-in slide-in-from-left duration-500">
-            PrivyLens
+            Lens
           </h1>
           <p className="text-sm text-gray-400 mt-1 animate-in slide-in-from-left duration-500 delay-100">
             Privacy-first AI chat
@@ -222,7 +222,7 @@ export function App() {
           <div className="max-w-4xl mx-auto">
             <h2 className="text-lg font-semibold text-white flex items-center">
               <span className="w-3 h-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mr-3 animate-pulse shadow-blue-500/50 shadow-lg"></span>
-              PrivyLens Chat
+              Lens Chat
               <div className="ml-auto flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                 <span className="text-xs text-green-400">Online</span>
