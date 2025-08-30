@@ -119,26 +119,59 @@ export default function FaceRedactor({ onImageReady }: FaceRedactorProps) {
       )}
 
       {originalUrl && (
-        <div className="space-y-2">
-          <p className="text-sm text-gray-400">Preview (click to compare original vs redacted)</p>
-          <button
-            className="block w-full focus:outline-none group"
-            onClick={() => redactedUrl && setPreview({ originalUrl, redactedUrl })}
-            disabled={!redactedUrl}
-          >
-            <div className="relative bg-[#1a1a1a] rounded-lg p-2 border border-gray-600">
-              {/* eslint-disable-next-line jsx-a11y/alt-text */}
-              <img
-                src={redactedUrl || originalUrl}
-                className="max-h-32 w-auto mx-auto rounded transition-transform group-hover:scale-105"
-              />
-              {redactedUrl && (
-                <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <span className="text-white text-xs font-medium">Click to compare</span>
-                </div>
-              )}
+        <div className="space-y-4">
+          <div className="text-sm text-gray-900 dark:text-gray-100 font-medium">
+            Image Processing Result
+          </div>
+
+          {/* Side by side comparison */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Original</div>
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border border-gray-300 dark:border-gray-600">
+                <img
+                  src={originalUrl}
+                  alt="Original image"
+                  className="w-full h-48 object-cover rounded-lg"
+                />
+              </div>
             </div>
-          </button>
+
+            <div>
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                Privacy Protected {busy && '(Processing...)'}
+              </div>
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border border-gray-300 dark:border-gray-600 relative">
+                {/* Show transition from original to redacted */}
+                <img
+                  src={redactedUrl || originalUrl}
+                  alt="Redacted image"
+                  className={`w-full h-48 object-cover rounded-lg transition-all duration-1000 ${
+                    busy ? 'filter blur-sm' : ''
+                  }`}
+                />
+                {busy && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
+                    <div className="flex items-center gap-2 bg-white/90 dark:bg-gray-900/90 px-3 py-2 rounded-lg">
+                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-sm text-gray-900 dark:text-gray-100">
+                        Processing faces...
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {redactedUrl && (
+            <button
+              onClick={() => setPreview({ originalUrl, redactedUrl })}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+            >
+              View full size comparison →
+            </button>
+          )}
 
           {/* Add to Chat button */}
           {redactedUrl && (

@@ -12,12 +12,11 @@ const openai = new OpenAI({
 llmRouter.post('/proxy', async (req, res) => {
   const { masked, messages = [], images = [] } = req.body ?? {};
   
-  // Debug logging
-  console.log('🔍 LLM Request Debug:');
-  console.log('  - Masked text:', masked);
-  console.log('  - Messages count:', messages.length);
-  console.log('  - Images count:', images.length);
-  console.log('  - Images data:', images.length > 0 ? 'Present (first 100 chars): ' + images[0]?.substring(0, 100) + '...' : 'None');
+  // Debug logging (commented out for production)
+  // console.log('🔍 LLM Request Debug:');
+  // console.log('  - Masked text:', masked);
+  // console.log('  - Messages count:', messages.length);
+  // console.log('  - Images count:', images.length);
   
   if (typeof masked !== 'string') {
     return res.status(400).json({ error: 'Invalid body: masked required' });
@@ -83,15 +82,8 @@ llmRouter.post('/proxy', async (req, res) => {
 
     conversationMessages.push(currentUserMessage);
 
-    // Debug logging for OpenAI request
+    // Select appropriate model based on content
     const selectedModel = images && images.length > 0 ? 'gpt-4o' : 'gpt-3.5-turbo';
-    console.log('🤖 OpenAI Request Debug:');
-    console.log('  - Model:', selectedModel);
-    console.log('  - Message count:', conversationMessages.length);
-    console.log('  - Last message content type:', Array.isArray(currentUserMessage.content) ? 'array (multimodal)' : 'string (text-only)');
-    if (Array.isArray(currentUserMessage.content)) {
-      console.log('  - Content parts:', currentUserMessage.content.map(part => part.type).join(', '));
-    }
 
     // Create streaming chat completion
     const stream = await openai.chat.completions.create({
