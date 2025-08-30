@@ -150,11 +150,11 @@ export function AnimatedTextRedaction({
                   )}
 
                   {/* Label tooltip */}
-                  {(isAnimated || shouldAnimate) && segment.label && (
+                  {/* {(isAnimated || shouldAnimate) && segment.label && (
                     <span className="absolute -top-5 left-0 bg-gray-800 text-white text-xs px-2 py-0.5 rounded shadow-lg whitespace-nowrap animate-in fade-in duration-200">
                       {segment.label}
                     </span>
-                  )}
+                  )} */}
                 </span>
               ) : (
                 segment.text
@@ -168,7 +168,6 @@ export function AnimatedTextRedaction({
       {isAnimating && (
         <div className="absolute right-2 top-2 flex items-center">
           <div className="w-2 h-2 bg-blue-400 rounded-full animate-ping"></div>
-          <div className="ml-2 text-xs text-blue-400 animate-pulse">Redacting...</div>
         </div>
       )}
 
@@ -176,7 +175,6 @@ export function AnimatedTextRedaction({
       {!isAnimating && spans.length > 0 && (
         <div className="absolute right-2 top-2 flex items-center animate-in fade-in duration-300">
           <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-          <div className="ml-2 text-xs text-green-400">Protected</div>
         </div>
       )}
     </div>
