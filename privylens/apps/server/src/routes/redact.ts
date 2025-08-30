@@ -8,6 +8,7 @@ import { pipeline } from '@xenova/transformers';
  * -----------------------------------------------------
  * Utility: File Upload Config
  * -----------------------------------------------------
+ * Configures multer for handling file uploads with limits.
  */
 const upload = multer({
   limits: {
@@ -19,13 +20,15 @@ const upload = multer({
 /**
  * -----------------------------------------------------
  * Utility: Normalize Entity Tag
- * Converts BIO scheme tags (B-PER, I-LOC, etc.) 
- * into human-readable labels (NAME, LOCATION, etc.)
  * -----------------------------------------------------
+ * Converts BIO scheme tags (B-PER, I-LOC, etc.)
+ * into human-readable labels for consistent masking.
+ *
+ * @param tag - The raw BIO entity tag (e.g. "B-PER", "I-LOC")
+ * @returns The normalized label string
  */
 function normalizeEntityTag(tag: string): string {
   const base = tag.replace(/^B-/, "").replace(/^I-/, "");
-
   switch (base) {
     case "PER":
       return "NAME";
@@ -36,7 +39,7 @@ function normalizeEntityTag(tag: string): string {
     case "MISC":
       return "MISCELLANEOUS";
     default:
-      return base; // fallback
+      return base; // fallback for unknown tags
   }
 }
 
@@ -44,20 +47,23 @@ function normalizeEntityTag(tag: string): string {
  * -----------------------------------------------------
  * Express Router
  * -----------------------------------------------------
+ * Main router for redaction API routes.
  */
 export const redactRouter: express.Router = express.Router();
 
 /**
  * -----------------------------------------------------
  * NER Pipeline Loader
- * Lazy-loads Xenova’s bert-base-NER model.
- * Ensures model is loaded only once at runtime.
  * -----------------------------------------------------
+ * Lazy-loads Xenova’s BERT NER model for efficiency.
+ * Ensures the model is only loaded once at runtime.
+ *
+ * @returns A singleton NER pipeline instance
  */
 let ner: any;
 async function getNER() {
   if (!ner) {
-    ner = await pipeline("token-classification", "Xenova/bert-base-NER");
+    ner = await pipeline("ner", "Xenova/bert-base-NER");
   }
   return ner;
 }
@@ -65,9 +71,13 @@ async function getNER() {
 /**
  * -----------------------------------------------------
  * Helper: Redact by Offsets
- * Replaces spans in text with [ENTITY] placeholders 
- * based on start/end positions.
  * -----------------------------------------------------
+ * Redacts spans from text based on start/end offsets
+ * and replaces them with placeholders.
+ *
+ * @param text - The input string to redact
+ * @param entities - Array of entities with start/end offsets
+ * @returns Redacted string with placeholders
  */
 function redactByOffsets(text: string, entities: any[]) {
   let result = "";
@@ -88,8 +98,12 @@ function redactByOffsets(text: string, entities: any[]) {
 /**
  * -----------------------------------------------------
  * Helper: Find All Indexes of Word
- * Returns all start/end offsets of a given word in text.
  * -----------------------------------------------------
+ * Returns all start and end offsets of a given word in text.
+ *
+ * @param sentence - Input sentence
+ * @param word - Target word to find
+ * @returns Array of objects with { start, end }
  */
 function indexesOfWord(sentence: string, word: string): { start: number; end: number }[] {
   const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -109,33 +123,61 @@ function indexesOfWord(sentence: string, word: string): { start: number; end: nu
 
 /**
  * -----------------------------------------------------
- * Helper: Assign Offsets
- * Sequentially assigns character offsets to NER results 
- * when start/end are not provided by the model.
+ * Helper: Aggregate Subwords
  * -----------------------------------------------------
+ * Merges subword tokens (e.g., "Man" + "##ish") into full
+ * words and assigns character offsets using regex search.
+ *
+ * @param text - The original input string
+ * @param entities - Raw NER model output tokens
+ * @returns Array of merged entities with offsets
  */
-function assignOffsets(text: string, entities: any[]) {
-  let searchIndex = 0;
-  return entities.map((ent: any) => {
-    const start = text.indexOf(ent.word, searchIndex);
-    const end = start + ent.word.length;
-    searchIndex = end;
-    return {
-      entity: ent.entity,
-      value: ent.word,
-      start,
-      end,
-    };
-  });
+function aggregateSubwords(text: string, entities: any[]) {
+  const merged: any[] = [];
+
+  for (const ent of entities) {
+    const label = ent.entity.replace(/^B-/, "").replace(/^I-/, "");
+
+    if (ent.word.startsWith("##") && merged.length > 0) {
+      // Append to previous entity
+      const prev = merged[merged.length - 1];
+      prev.word += ent.word.replace("##", "");
+      prev.score = Math.max(prev.score, ent.score);
+    } else {
+      // Start a new entity
+      merged.push({
+        entity_group: label,
+        word: ent.word.replace("##", ""),
+        score: ent.score,
+      });
+    }
+  }
+
+  // Assign offsets for each merged entity
+  const withOffsets: any[] = [];
+  for (const ent of merged) {
+    const occurrences = indexesOfWord(text, ent.word);
+    for (const occ of occurrences) {
+      withOffsets.push({
+        ...ent,
+        start: occ.start,
+        end: occ.end,
+      });
+    }
+  }
+
+  return withOffsets;
 }
 
 /**
  * -----------------------------------------------------
  * Route: POST /text
- * Applies both NER-based redaction (names, orgs, locations) 
- * and structured redaction (emails, phones, etc.).
- * Returns masked text and span metadata.
  * -----------------------------------------------------
+ * Redacts sensitive text by combining:
+ * 1. NER-based redaction (names, orgs, locations)
+ * 2. Regex-based structured redaction (emails, phones, etc.)
+ *
+ * @returns JSON object with masked text and span metadata
  */
 redactRouter.post('/text', express.json(), async (req, res) => {
   try {
@@ -148,25 +190,30 @@ redactRouter.post('/text', express.json(), async (req, res) => {
     const nermodel = await getNER();
     const entities = await nermodel(text, { aggregation_strategy: "simple" });
 
-    // Assign offsets for relevant entities
-    const nerSpans = assignOffsets(
-      text,
-      entities.filter((ent: any) => ["B-PER", "B-LOC", "B-ORG"].includes(ent.entity))
-    );
+    // Aggregate subwords + assign offsets
+    const mergedEntities = aggregateSubwords(text, entities);
+
+    // Filter for relevant entity groups
+    const nerSpans = mergedEntities
+      .filter((ent: any) => ["PER", "LOC", "ORG"].includes(ent.entity_group))
+      .map((ent: any) => ({
+        entity: ent.entity_group,
+        value: ent.word,
+        start: ent.start,
+        end: ent.end,
+      }));
 
     // Apply NER-based redaction
     const nerMasked = redactByOffsets(text, nerSpans);
 
-    // Apply structured PII redaction on top
+    // Apply structured redaction
     const { masked: piiMasked, spans: piiSpans } = basicRedactText(nerMasked, policy ?? {});
 
-    // Merge spans
-    const allSpans = [...piiSpans, ...nerSpans];
+    // Merge spans (NER + structured)
+    const allSpans = [...nerSpans, ...piiSpans];
 
     return res.json({ masked: piiMasked, spans: allSpans });
-
   } catch (err: any) {
-    console.error(err);
     return res.status(500).json({ error: err.message });
   }
 });
@@ -174,9 +221,11 @@ redactRouter.post('/text', express.json(), async (req, res) => {
 /**
  * -----------------------------------------------------
  * Route: POST /image
- * Redacts sensitive content in uploaded images.
- * Uses Privylens image redactor.
  * -----------------------------------------------------
+ * Redacts sensitive information in uploaded images.
+ * Uses Privylens image redactor.
+ *
+ * @returns PNG image buffer of redacted content
  */
 redactRouter.post('/image', upload.single('file'), async (req, res) => {
   try {
@@ -185,7 +234,6 @@ redactRouter.post('/image', upload.single('file'), async (req, res) => {
     res.setHeader('Content-Type', 'image/png');
     return res.send(out);
   } catch (err) {
-    console.error(err);
     return res.status(500).json({ error: 'Failed to process image' });
   }
 });
