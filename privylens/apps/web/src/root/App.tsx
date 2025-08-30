@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { PolicyPopover } from '@/components/PolicyPopover';
 import { ChatComposer } from '@/components/ChatComposer';
 import { ChatStream, Message } from '@/components/ChatStream';
-import { ImageDropzone } from '@/components/ImageDropzone';
+//import { ImageDropzone } from '@/components/ImageDropzone';
 import FaceRedactor from '@/components/FaceRedactor';
 
 export function App() {
@@ -75,7 +75,7 @@ export function App() {
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="border-b border-gray-600 bg-[#2f2f2f] p-4">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             <h2 className="text-lg font-semibold text-white">Face & Privacy Redaction</h2>
             <p className="text-sm text-gray-400">
               Automatically blur faces and redact sensitive information
@@ -84,11 +84,11 @@ export function App() {
         </div>
 
         <div className="flex-1 overflow-hidden">
-          <div className="h-full max-w-4xl mx-auto px-6 py-6">
+          <div className="h-full max-w-6xl mx-auto px-6 py-6">
             {/* Three-column layout - Face redaction now main focus */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-full">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 h-full">
               {/* Main Face Redaction section - takes up 2 columns */}
-              <div className="xl:col-span-2 flex flex-col bg-[#2f2f2f] rounded-lg border border-gray-600 overflow-hidden">
+              <div className="xl:col-span-7 flex flex-col bg-[#2f2f2f] rounded-lg border border-gray-600 overflow-hidden">
                 <div className="p-4 border-b border-gray-600 bg-[#2a2a2a]">
                   <h3 className="font-semibold text-white">Face Redaction Studio</h3>
                   <p className="text-xs text-gray-400 mt-1">
@@ -101,22 +101,22 @@ export function App() {
               </div>
 
               {/* Right panel - Text tools */}
-              <div className="flex flex-col space-y-6">
+              <div className="xl:col-span-5 flex flex-col space-y-6">
                 {/* Text Redaction Chat */}
-                <div className="bg-[#2f2f2f] rounded-lg border border-gray-600 overflow-hidden flex-1">
+                <div className="bg-[#2f2f2f] rounded-lg border border-gray-600 flex-1 flex flex-col min-h-0">
                   <div className="p-4 border-b border-gray-600 bg-[#2a2a2a]">
                     <h3 className="font-semibold text-white">Text Redaction</h3>
                     <p className="text-xs text-gray-400 mt-1">
                       Type sensitive info - auto-redacted
                     </p>
                   </div>
-                  <div className="flex-1 overflow-hidden h-64">
-                    <ChatStream messages={messages} />
-                  </div>
+                    <div className="flex h-screen bg-[#212121] max-h-[70vh] text-gray-100 overflow-y-auto ">
+                      <ChatStream messages={messages} />
+                   </div>
                 </div>
 
                 {/* Image Upload for Chat */}
-                <div className="bg-[#2f2f2f] rounded-lg border border-gray-600 overflow-hidden">
+                {/*<div className="bg-[#2f2f2f] rounded-lg border border-gray-600 overflow-hidden">
                   <div className="p-4 border-b border-gray-600 bg-[#2a2a2a]">
                     <h3 className="font-semibold text-white">Add to Chat</h3>
                     <p className="text-xs text-gray-400 mt-1">Upload images for chat</p>
@@ -124,14 +124,14 @@ export function App() {
                   <div className="p-4">
                     <ImageDropzone onUploaded={handleImageUploaded} policy={policy} />
                   </div>
-                </div>
+                </div>*/}
               </div>
             </div>
           </div>
         </div>
 
         {/* Input area - ChatGPT style */}
-        <div className="border-t border-gray-600 bg-[#2f2f2f] p-4">
+        <div className="border-t border-gray-600 bg-transparent p-4">
           <div className="max-w-4xl mx-auto">
             <ChatComposer
               onRedacted={handleRedactedText}
