@@ -6,7 +6,7 @@ export const llmRouter = express.Router();
 
 // Initialize OpenAI client
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY, 
 });
 
 llmRouter.post('/proxy', express.json(), async (req, res) => {
@@ -34,7 +34,7 @@ llmRouter.post('/proxy', express.json(), async (req, res) => {
     const conversationMessages = [
       {
         role: 'system' as const,
-        content: 'You are a helpful AI assistant. The user may have redacted sensitive information in their messages for privacy. Please respond naturally and helpfully.'
+        content: 'You are a helpful AI assistant. The user may have redacted sensitive information in their messages for privacy. The redacted information will be wrapped in [MASKED] tags. When referring to redacted content in your responses, do not use square brackets or phrases like "[redacted]" or "[masked information]". Instead, refer to it naturally - for example, use phrases like "the person you mentioned", "that information", or "the details you provided". Please respond naturally and helpfully while respecting the user\'s privacy choices.'
       },
       ...messages.map((msg: any) => ({
         role: msg.role === 'user' ? 'user' as const : 'assistant' as const,
