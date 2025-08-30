@@ -6,7 +6,7 @@ import FaceRedactor from '@/components/FaceRedactor';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/supabase/client'; // your client factory
 import { saveTextRedaction, saveImageRedaction } from '@/lib/history';
-
+import { streamLLMResponse, ChatMessage, blobUrlToBase64 } from '@/lib/api';
 
 export function App() {
   const navigate = useNavigate();
@@ -42,18 +42,6 @@ export function App() {
   ) => {
     const msg: Message = { id: crypto.randomUUID(), role: 'user', type: 'text', masked, original };
     setMessages((m) => [...m, msg]);
-
-    const { data: { user } = { user: null } } = await supabase.auth.getUser();
-    if (user) {
-      await saveTextRedaction({
-        userId: user.id,
-        masked,
-        original,
-        saveOriginal: false,
-        spans,
-        metadata: { policySnapshot: policy, source: 'chat-composer' },
-      });
-    }
   };
 
   const handleImageUploaded = async (originalThumbUrl: string, redactedUrl: string) => {
@@ -66,38 +54,42 @@ export function App() {
     };
     setMessages((m) => [...m, msg]);
 
-    const { data: { user } = { user: null } } = await supabase.auth.getUser();
-    if (user) {
-      const [redactedBlob] = await Promise.all([blobFromUrl(redactedUrl)]);
+    try {
+      const { data: { user } = { user: null } } = await supabase.auth.getUser();
+      if (!user) return;
+
       await saveImageRedaction({
         userId: user.id,
-        redactedBlob,
-        originalBlob: null,
-        metadata: { policySnapshot: policy, source: 'face-redactor' },
+        originalUrl: originalThumbUrl,  // optional if you don’t save originals
+        redactedUrl,
+        facesCount: 0,
+        saveOriginal: false,
       });
+    } catch (e) {
+      console.error('saveImageRedaction failed:', e);
     }
   };
 
   return (
-    <div className="flex h-screen bg-[#212121] text-gray-100">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       {/* Sidebar - ChatGPT style */}
-      <div className="w-64 bg-[#171717] border-r border-gray-600 flex flex-col">
-        <div className="p-4 border-b border-gray-600">
+      <div className="w-64 bg-gray-900 flex flex-col">
+        <div className="p-4 border-b border-gray-700">
           <h1 className="text-xl font-semibold text-white">PrivyLens</h1>
-          <p className="text-sm text-gray-400 mt-1">Privacy-first redaction</p>
+          <p className="text-sm text-gray-400 mt-1">Privacy-first AI chat</p>
         </div>
 
         <div className="flex-1 p-4">
           <div className="space-y-4">
-            <section className="bg-[#2f2f2f] rounded-lg p-4 border border-gray-600">
+            <section className="bg-gray-800 rounded-lg p-4 border border-gray-700">
               <h3 className="font-medium text-white mb-3">Privacy Settings</h3>
               <PolicyPopover policy={policy} onChange={onPolicyChange} />
             </section>
 
             <div className="text-xs text-gray-500 p-3">
               <p>✓ Client-side processing</p>
-              <p>✓ No data sent to servers</p>
-              <p>✓ Real-time redaction</p>
+              <p>✓ Auto redaction</p>
+              <p>✓ Image privacy</p>
             </div>
             {/* Create History Tab, that loads the History.tsx page */}
             <button
@@ -110,14 +102,14 @@ export function App() {
         </div>
       </div>
 
-      {/* Main content area - Full ChatGPT style */}
-      <div className="flex-1 flex flex-col">
+      {/* Main Chat Area - ChatGPT style */}
+      <div className="flex-1 flex flex-col bg-white dark:bg-gray-800">
         {/* Header */}
-        <div className="border-b border-gray-600 bg-[#2f2f2f] p-4">
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-lg font-semibold text-white">Face & Privacy Redaction</h2>
-            <p className="text-sm text-gray-400">
-              Automatically blur faces and redact sensitive information
+        <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">PrivyLens Chat</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Your messages and images are automatically redacted for privacy
             </p>
           </div>
         </div>
@@ -135,7 +127,7 @@ export function App() {
                   </p>
                 </div>
                 <div className="flex-1 p-6">
-                  <FaceRedactor onImageReady={(o, r) => { void handleImageUploaded(o, r); }} />
+                  <FaceRedactor onImageReady={handleImageUploaded} />
                 </div>
               </div>
 
@@ -149,9 +141,9 @@ export function App() {
                       Type sensitive info - auto-redacted
                     </p>
                   </div>
-                    <div className="flex-1 min-h-0 overflow-hidden">
+                    <div className="flex h-screen bg-[#212121] max-h-[70vh] text-gray-100 overflow-y-auto ">
                       <ChatStream messages={messages} />
-                    </div>
+                   </div>
                 </div>
 
                 {/* Image Upload for Chat */}
@@ -169,9 +161,9 @@ export function App() {
           </div>
         </div>
 
-        {/* Input area - ChatGPT style */}
-        <div className="border-t border-gray-600 bg-transparent p-4">
-          <div className="max-w-4xl mx-auto">
+        {/* Input Area - ChatGPT style */}
+        <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+          <div className="max-w-3xl mx-auto">
             <ChatComposer
               onRedacted={(...args) => { void handleRedactedText(...args as any); }}
               onImageAttached={(o, r) => { void handleImageUploaded(o, r); }}

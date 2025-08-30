@@ -29,7 +29,12 @@ export function ChatComposer({
     if (!value && attachedImages.length === 0) return;
     setLoading(true);
     try {
-      // Images are already sent when attached, no need to send again
+      // Send attached images first
+      for (const img of attachedImages) {
+        if (onImageAttached && !img.converting) {
+          onImageAttached(img.originalUrl, img.redactedUrl);
+        }
+      }
 
       // Then send text if any
       if (value) {
@@ -53,11 +58,6 @@ export function ChatComposer({
     // Show conversion animation
     const newImage = { originalUrl, redactedUrl, converting: true };
     setAttachedImages((prev) => [...prev, newImage]);
-
-    // Immediately add to chat for AI to analyze
-    if (onImageAttached) {
-      onImageAttached(originalUrl, redactedUrl);
-    }
 
     // After 2 seconds, mark as converted
     setTimeout(() => {
