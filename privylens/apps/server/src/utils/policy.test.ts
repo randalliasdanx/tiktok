@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ensureMasked } from './policy';
+import { ensureMasked } from './policy.ts';
 
 describe('ensureMasked', () => {
   it('flags unmasked content', () => {
