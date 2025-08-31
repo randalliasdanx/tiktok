@@ -135,12 +135,20 @@ Modern AI apps make it far too easy to leak private data—names, emails, locati
 ## Setup (optional quick start)
 
 ```bash
-# Frontend
-pnpm i
-pnpm -F web dev
+# Running the repo 
+1) download node js 
 
-# Backend
-pnpm -F api dev
+2) cd into tiktok/privylens
+
+3) npm install -g pnpm 
+
+// install pnpm globally 
+
+4) pnpm install 
+
+5) pnpm dev 
+
+- website would be on localhost:3000
 
 # Models (client)
 # Load TinyFaceDetector weights from CDN or place in /public/models
