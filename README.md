@@ -1,4 +1,4 @@
-# Lens (aka **PrivyLens**) — Privacy-First Conversational AI
+# Lens — Privacy-First Conversational AI
 
 A secure, redaction-by-default chat interface that detects and masks sensitive text and blurs identifiable regions in images **before** anything reaches an external LLM.
 
